@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 let books = require("./booksdb.js");
 const regd_users = express.Router();
+const SECRET_KEY = 'fingerprint_customer';
 
 let users = [];
 
@@ -36,7 +37,7 @@ regd_users.put("/auth/review/:isbn", (req, res) => {
 
   try {
     const decoded = jwt.verify(token, SECRET_KEY)
-    const user = users.find((user) => user.username === decoded.username)
+    const username = decoded.username
 
     if (!books[isbn]) {
       return res.status(404).json({ message: 'Book not found' })
@@ -47,14 +48,12 @@ regd_users.put("/auth/review/:isbn", (req, res) => {
     }
 
     const reviewsBooks = books[isbn].reviews
-    const reviewUser = Object.keys(reviewsBooks).find(
-      (r) => r.username === user
-    )
+    const reviewUser = Object.prototype.hasOwnProperty.call(reviewsBooks, username)
 
     if (reviewUser) {
       return res.status(400).json({ message: 'Review already exists' })
     } else {
-      books[isbn].reviews[user] = review
+      books[isbn].reviews[username] = review
       return res.status(200).json({ message: 'Review added successfully' })
     }
   } catch (error) {
@@ -78,9 +77,11 @@ regd_users.delete('/auth/review/:isbn', (req, res) => {
       return res.status(404).json({ message: 'No reviews found for this book' })
     }
 
-    books[isbn].reviews = Object.keys(books[isbn].reviews).find(
-      (r) => r.username !== username
-    )
+    if (!Object.prototype.hasOwnProperty.call(books[isbn].reviews, username)) {
+      return res.status(404).json({ message: 'Review not found for this user' })
+    }
+
+    delete books[isbn].reviews[username]
     return res.status(200).json({ message: 'Review deleted successfully' })
   } catch (error) {
     return res.status(401).json({ message: 'Unauthorized' })
